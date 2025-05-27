@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Halve It Skóre</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Základní nastavení */
+        body {
+            font-family: 'Roboto', sans-serif; 
+            margin: 0; padding: 0; 
+            background-color: #1A237E; 
+            color: #E0E0E0; 
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; 
+        }
+        #app-main-title, 
+        #current-target-display, 
+        button, 
+        .player-score-box .player-score-value,
+        .throw-display-box,
+        #game-over-area h2#game-over-main-message,
+        #setup-area h2, #game-over-area h2.section-title {
+            font-family: 'Bebas Neue', cursive;
+            font-weight: normal; 
+            letter-spacing: 0.5px;
+        }
+        
+        .container {
+            background-color: transparent; padding: 20px;
+            border-radius: 0; box-shadow: none; 
+            width: 100%; max-width: 420px; 
+            box-sizing: border-box; display: flex;
+            flex-direction: column; flex-grow: 1; 
+        }
+
+        #app-main-title {
+            color: #FFEB3B; 
+            text-align: center; 
+            font-size: 3em; /* Vráceno na původní velikost */
+            margin-bottom: 20px; 
+        }
+        body.game-active #app-main-title { display: none; }
+
+
+        #setup-area h2 {
+            color: #B0BEC5; text-align: center; margin-bottom: 20px; font-size: 2em; 
+        }
+        #game-over-area h2.section-title {
+            color: #B0BEC5; text-align: center; margin-bottom: 10px; font-size: 1.8em; 
+        }
+         #game-over-area h2#game-over-main-message { 
+            font-size: 2.5em;color:#FFEB3B;margin-bottom:15px; text-align: center; 
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #setup-area, #game-area, #game-over-area {
+            display: none;
+            width: 100%; 
+        }
+
+        body.setup-active #setup-area {
+            display: flex; 
+            flex-direction: column;
+        }
+        body.game-active #game-area {
+            display: block; 
+        }
+        body.gameover-active #game-over-area {
+            display: block; 
+        }
+
+        #current-target-display {
+            font-size: 3.8em; /* ZMĚNA ZDE: Např. z 4.5em na 3.8em */
+            line-height: 1.0; 
+            color: #FFEB3B; 
+            text-align: center; margin-top: 10px; margin-bottom: 10px;
+        }
+        #current-player-display {
+             display: none; 
+        }
+
+        /* ... zbytek CSS zůstává stejný ... */
+        .player-scores-container {
+            display: flex; justify-content: center; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            flex-wrap: wrap; 
+        }
+        .player-score-box {
+            border: 2px solid #303F9F; border-radius: 8px; 
+            padding: 8px 12px; 
+            text-align: center;
+            background-color: #283593; 
+            min-width: 90px; 
+            box-sizing: border-box;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        .player-score-box .player-name {
+            font-family: 'Roboto', sans-serif; 
+            font-size: 0.9em; 
+            color: #90A4AE; 
+            margin-bottom: 4px; 
+            text-transform: uppercase; font-weight: 500; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px;
+        }
+        .player-score-box .player-score-value {
+            font-size: 2.8em; 
+            color: #78909C; 
+            line-height: 1; 
+        }
+        .player-score-box .player-average {
+            font-family: 'Roboto', sans-serif; 
+            font-size: 0.8em; 
+            color: #78909C;
+            margin-top: 3px;
+        }
+        .player-score-box.active-player { border-color: #FFEB3B; }
+        .player-score-box.active-player .player-name { color: #CFD8DC; }
+        .player-score-box.active-player .player-score-value { color: #FFFFFF; }
+        .player-score-box.active-player .player-average { color: #B0BEC5; }
+
+
+        #setup-area label { font-family: 'Roboto', sans-serif; display: block; margin-top: 15px; font-weight: 500; color: #B0BEC5; font-size: 1.1em;}
+        #setup-area input[type="number"], 
+        #setup-area input[type="text"] {
+            width: 100%; padding: 12px; margin-top: 8px;
+            border: 1px solid #3F51B5; border-radius: 6px; box-sizing: border-box;
+            background-color: #283593; color: #ECEFF1; font-size: 1em; font-family: 'Roboto', sans-serif;
+        }
+
+        #detailed-segment-inputs-area,
+        #bull-detailed-inputs-area {
+            display: flex;
+            flex-direction: column;
+            gap: 10px; 
+        }
+      
+        .multiplier-buttons, .bull-choice-buttons { display: flex; gap: 8px; }
+        .multiplier-buttons button, 
+        .bull-choice-buttons button { 
+            flex-grow: 1; flex-basis: 0; min-width: 0; padding: 16px 10px; border: none; 
+            background-color: #283593; color: #CFD8DC; border-radius: 6px; cursor: pointer; 
+            font-size: 1.1em; 
+            text-align: center; 
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .multiplier-buttons button.active, 
+        .bull-choice-buttons button.active { background-color: #FFEB3B; color: #1A237E; }
+        .multiplier-buttons button:hover:not(.active),
+        .bull-choice-buttons button:hover:not(.active) { background-color: #303F9F; }
+        .multiplier-buttons button:active:not(.active),
+        .bull-choice-buttons button:active:not(.active) { background-color: #5C6BC0; color: #FFFFFF; }
+        
+        .selected-throws-display{display:flex;justify-content:center;gap:10px;margin-bottom:15px}
+        .throw-display-box{ 
+            width:50px;height:50px; 
+            border:2px solid #303F9F;border-radius:6px;display:flex;align-items:center;justify-content:center;
+            font-size:2em; 
+            color:#CFD8DC;background-color:#283593
+        }
+        
+        .keypad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+        .keypad-grid.layout-double,
+        .keypad-grid.layout-triple {
+            grid-template-columns: repeat(4, 1fr); 
+        }
+        .keypad-button{ 
+            padding:16px 10px;border:none;background-color:#283593;color:#CFD8DC;border-radius:6px;cursor:pointer;
+            font-size:1.3em; 
+            text-align:center;transition:background-color .2s ease;
+        }
+        .keypad-grid.layout-double .keypad-button,
+        .keypad-grid.layout-triple .keypad-button {
+            padding: 12px 6px; 
+            font-size: 1.15em;  
+        }
+
+        .keypad-button:hover{background-color:#303F9F}
+        .keypad-button:active{background-color:#5C6BC0;color:#fff}
+        
+        .keypad-grid #keypad-clear-last { 
+            margin-top: 0; 
+            background-color: #455A64; 
+        }
+        .keypad-grid #keypad-clear-last:hover {
+             background-color: #546E7A;
+        }
+        
+        body.target-any-multiple #any-multiple-inputs-area{display:none!important}
+        body:not(.target-any-multiple) #any-multiple-keypad-area{display:none!important}
+        
+        button#submit-turn, button#start-game, button#restart-game, button#next-game-in-series { 
+            background-color: #3949AB; color: #ECEFF1; padding: 16px 20px; border: none; 
+            border-radius: 8px; cursor: pointer; font-size: 1.4em; 
+            margin-top: 10px; 
+            width: 100%; text-transform: uppercase; 
+            transition: background-color 0.2s ease;
+        }
+        button#submit-turn:hover, button#start-game:hover, button#restart-game:hover, button#next-game-in-series:hover { background-color: #303F9F; }
+        button#restart-game { margin-top: 20px; } 
+        
+        button.secondary-button { 
+            background-color: #455A64; 
+            color: #CFD8DC;
+            font-size: 1.1em; 
+            margin-top: 10px; 
+            padding: 10px 15px; 
+            border: none;
+            border-radius: 6px;
+            width: 100%;
+            text-transform: none;
+            cursor: pointer;
+        }
+        button.secondary-button:hover {
+            background-color: #546E7A;
+        }
+        button.secondary-button.hidden { 
+            display: none !important;
+        }
+
+        #input-prompt{color:#90A4AE;text-align:center;margin-bottom:10px;font-size:1em; font-family: 'Roboto', sans-serif;}
+        #input-prompt.hidden-prompt{display:none!important} 
+        
+        #game-over-message{text-align:center;font-size:1.4em;margin-bottom:20px;color:#ECEFF1; font-family: 'Roboto', sans-serif; font-weight: 500;}
+        #final-scores-table{width:100%;border-collapse:separate;border-spacing:0 5px;margin-top:15px} 
+        #final-scores-table th,
+        #final-scores-table td{
+            border:none; 
+            padding:8px 6px; 
+            text-align:left;
+            color:#CFD8DC;
+            font-size: 0.95em; 
+            font-family: 'Roboto', sans-serif; 
+        }
+        #final-scores-table th{
+            background-color:transparent;
+            color:#90A4AE;
+            font-weight:500; 
+            text-transform:uppercase;
+            font-size: 0.85em; 
+            border-bottom: 2px solid #3F51B5; 
+        }
+        #final-scores-table td {
+            background-color: #283593; 
+        }
+        #final-scores-table tr td:first-child { border-top-left-radius: 5px; border-bottom-left-radius: 5px;}
+        #final-scores-table tr td:last-child { border-top-right-radius: 5px; border-bottom-right-radius: 5px;}
+
+        #any-multiple-inputs-area{display:none}#any-multiple-inputs-area label{color:#B0BEC5;margin-bottom:8px; font-family: 'Roboto', sans-serif;}
+        #any-multiple-inputs-area .dart-inputs input[type=number]{background-color:#283593;color:#ECEFF1;border:1px solid #3F51B5;text-align:center; font-family: 'Roboto', sans-serif;}
+    </style>
+</head>
+<body class="setup-active">
+    <div class="container">
+        <h1 id="app-main-title">Halve It Skóre</h1> 
+        
+        <div id="setup-area">
+            <h2>Nastavení hry</h2>
+            <label for="num-players">Počet hráčů (1-8):</label>
+            <input type="number" id="num-players" min="1" max="8" value="2">
+            <div id="player-names-area"></div>
+            <button id="start-game">Začít hru</button>
+        </div>
+        
+        <div id="game-area">
+            <div id="current-target-display"></div>
+            <h3 id="current-player-display"></h3> 
+            <div id="player-scores-display" class="player-scores-container"></div>
+            <div id="inputs-area">
+                <p id="input-prompt" class="hidden-prompt"></p>
+                <div id="detailed-segment-inputs-area" class="hidden">
+                    <div class="dart-row"><div class="dart-label"></div><div class="multiplier-buttons"><button data-dart="1" data-multiplier="0">MISS</button><button data-dart="1" data-multiplier="1">SINGLE</button><button data-dart="1" data-multiplier="2">DOUBLE</button><button data-dart="1" data-multiplier="3">TRIPLE</button></div></div>
+                    <div class="dart-row"><div class="dart-label"></div><div class="multiplier-buttons"><button data-dart="2" data-multiplier="0">MISS</button><button data-dart="2" data-multiplier="1">SINGLE</button><button data-dart="2" data-multiplier="2">DOUBLE</button><button data-dart="2" data-multiplier="3">TRIPLE</button></div></div>
+                    <div class="dart-row"><div class="dart-label"></div><div class="multiplier-buttons"><button data-dart="3" data-multiplier="0">MISS</button><button data-dart="3" data-multiplier="1">SINGLE</button><button data-dart="3" data-multiplier="2">DOUBLE</button><button data-dart="3" data-multiplier="3">TRIPLE</button></div></div>
+                </div>
+                <div id="bull-detailed-inputs-area" class="hidden">
+                    <div class="dart-row"><div class="dart-label"></div><div class="bull-choice-buttons"><button data-dart="1" data-value="0">MISS</button><button data-dart="1" data-value="25">VNĚJŠÍ (25)</button><button data-dart="1" data-value="50">VNITŘNÍ (50)</button></div></div>
+                    <div class="dart-row"><div class="dart-label"></div><div class="bull-choice-buttons"><button data-dart="2" data-value="0">MISS</button><button data-dart="2" data-value="25">VNĚJŠÍ (25)</button><button data-dart="2" data-value="50">VNITŘNÍ (50)</button></div></div>
+                    <div class="dart-row"><div class="dart-label"></div><div class="bull-choice-buttons"><button data-dart="3" data-value="0">MISS</button><button data-dart="3" data-value="25">VNĚJŠÍ (25)</button><button data-dart="3" data-value="50">VNITŘNÍ (50)</button></div></div>
+                </div>
+                <div id="any-multiple-inputs-area" class="dart-inputs hidden">
+                    <label>Hodnoty trefených čísel (0 pro miss):</label>
+                    <input type="number" id="dart1-value" min="0" max="20" placeholder="Š1"><input type="number" id="dart2-value" min="0" max="20" placeholder="Š2"><input type="number" id="dart3-value" min="0" max="20" placeholder="Š3">
+                </div>
+                <div id="any-multiple-keypad-area" class="hidden">
+                    <div class="selected-throws-display">
+                        <div class="throw-display-box" id="throw-display-1">-</div><div class="throw-display-box" id="throw-display-2">-</div><div class="throw-display-box" id="throw-display-3">-</div>
+                    </div>
+                    <div class="keypad-grid"> 
+                        <button class="keypad-button" data-value="1">1</button> <button class="keypad-button" data-value="2">2</button> <button class="keypad-button" data-value="3">3</button>
+                        <button class="keypad-button" data-value="4">4</button> <button class="keypad-button" data-value="5">5</button> <button class="keypad-button" data-value="6">6</button>
+                        <button class="keypad-button" data-value="7">7</button> <button class="keypad-button" data-value="8">8</button> <button class="keypad-button" data-value="9">9</button>
+                        <button class="keypad-button" data-value="10">10</button><button class="keypad-button" data-value="11">11</button><button class="keypad-button" data-value="12">12</button>
+                        <button class="keypad-button" data-value="13">13</button><button class="keypad-button" data-value="14">14</button><button class="keypad-button" data-value="15">15</button>
+                        <button class="keypad-button" data-value="16">16</button><button class="keypad-button" data-value="17">17</button><button class="keypad-button" data-value="18">18</button>
+                        <button class="keypad-button" data-value="19">19</button><button class="keypad-button" data-value="20">20</button>
+                        <button class="keypad-button clear-last-throw" id="keypad-clear-last">SMAZAT</button>
+                        <button class="keypad-button" id="keypad-zero-btn" data-value="0">0</button>
+                        <button class="keypad-button" id="keypad-bull-btn" data-value="25">BULL</button> 
+                    </div>
+                </div>
+            </div>
+            <button id="submit-turn">Potvrdit</button>
+            <button id="undo-turn" class="secondary-button hidden">Zpět (poslední tah)</button>
+        </div>
+        
+        <div id="game-over-area">
+            <h2 id="game-over-main-message">Konec hry!</h2> 
+            <div id="game-over-message"></div> 
+            <h2 class="section-title">Výsledky série</h2> 
+            <table id="final-scores-table">
+                <thead>
+                    <tr>
+                        <th>Hráč</th>
+                        <th>Skóre (hra)</th>
+                        <th>Ø (hra)</th>
+                        <th>Výhry (série)</th>
+                        <th>Skóre (série)</th>
+                        <th>Ø (série)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button id="next-game-in-series">Další hra v sérii</button> 
+            <button id="restart-game">Nová hra (reset série)</button>
+        </div>
+    </div>
+    <script>
+        const targets = [ 
+            { id: "s20", name: "20", type: "segment_detailed", value: 20 }, 
+            { id: "s19", name: "19", type: "segment_detailed", value: 19 }, 
+            { id: "anyT", name: "TRIPLE", type: "any_multiple", multiplier: 3 }, 
+            { id: "s18", name: "18", type: "segment_detailed", value: 18 }, 
+            { id: "s17", name: "17", type: "segment_detailed", value: 17 }, 
+            { id: "anyD", name: "DOUBLE", type: "any_multiple", multiplier: 2 }, 
+            { id: "s16", name: "16", type: "segment_detailed", value: 16 }, 
+            { id: "s15", name: "15", type: "segment_detailed", value: 15 }, 
+            { id: "bull", name: "BULL", type: "bull_detailed" } 
+        ];
+        let players = []; let currentPlayerIndex = 0; let currentTargetIndex = 0; const initialScore = 0;
+        
+        const bodyElement = document.body; const setupArea = document.getElementById('setup-area'); const gameArea = document.getElementById('game-area'); const gameOverArea = document.getElementById('game-over-area'); const numPlayersInput = document.getElementById('num-players'); const playerNamesArea = document.getElementById('player-names-area'); const startGameButton = document.getElementById('start-game');
+        const currentTargetDisplay = document.getElementById('current-target-display'); const inputPrompt = document.getElementById('input-prompt');
+        const detailedSegmentInputsArea = document.getElementById('detailed-segment-inputs-area'); let dartMultipliers = { 1: 0, 2: 0, 3: 0 };
+        const bullDetailedInputsArea = document.getElementById('bull-detailed-inputs-area'); let bullDartValues = { 1: 0, 2: 0, 3: 0 };
+        const anyMultipleInputsArea = document.getElementById('any-multiple-inputs-area'); 
+        const anyMultipleKeypadArea = document.getElementById('any-multiple-keypad-area'); 
+        const keypadGrid = anyMultipleKeypadArea.querySelector('.keypad-grid');
+        
+        const allKeypadButtons = anyMultipleKeypadArea.querySelectorAll('.keypad-button');
+        const clearLastThrowButton = document.getElementById('keypad-clear-last'); 
+        const keypadBullButton = document.getElementById('keypad-bull-btn');
+        const keypadZeroButton = document.getElementById('keypad-zero-btn');
+
+        const throwDisplayBoxes = [ document.getElementById('throw-display-1'), document.getElementById('throw-display-2'), document.getElementById('throw-display-3') ]; 
+        let currentKeypadThrows = []; const MAX_KEYPAD_THROWS = 3;
+        
+        const submitTurnButton = document.getElementById('submit-turn'); 
+        const undoTurnButton = document.getElementById('undo-turn');
+        const nextGameInSeriesButton = document.getElementById('next-game-in-series');
+        
+        let previousGameStates = []; 
+        const MAX_UNDO_STEPS = 2;    
+
+        const playerScoresDisplay = document.getElementById('player-scores-display'); 
+        const finalScoresTableBody = document.getElementById('final-scores-table').getElementsByTagName('tbody')[0]; 
+        const gameOverMessage = document.getElementById('game-over-message'); 
+        const restartGameButton = document.getElementById('restart-game');
+
+        detailedSegmentInputsArea.querySelectorAll('.multiplier-buttons button').forEach(button => { button.addEventListener('click', (event) => { const dartNum = event.target.dataset.dart; const multiplier = parseInt(event.target.dataset.multiplier); dartMultipliers[dartNum] = multiplier; detailedSegmentInputsArea.querySelectorAll(`.multiplier-buttons button[data-dart="${dartNum}"]`).forEach(btn => btn.classList.remove('active')); event.target.classList.add('active'); }); });
+        bullDetailedInputsArea.querySelectorAll('.bull-choice-buttons button').forEach(button => { button.addEventListener('click', (event) => { const dartNum = event.target.dataset.dart; const value = parseInt(event.target.dataset.value); bullDartValues[dartNum] = value; bullDetailedInputsArea.querySelectorAll(`.bull-choice-buttons button[data-dart="${dartNum}"]`).forEach(btn => btn.classList.remove('active')); event.target.classList.add('active'); }); });
+        
+        allKeypadButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                if (event.target === clearLastThrowButton) {
+                    if (currentKeypadThrows.length > 0) {
+                        currentKeypadThrows.pop();
+                        updateKeypadDisplay();
+                    }
+                } else { 
+                    if (currentKeypadThrows.length < MAX_KEYPAD_THROWS) {
+                        const value = parseInt(event.target.dataset.value);
+                        currentKeypadThrows.push(value);
+                        updateKeypadDisplay();
+                    }
+                }
+            });
+        });
+
+        function updateKeypadDisplay() { throwDisplayBoxes.forEach((box, index) => { if (index < currentKeypadThrows.length) { let displayValue = currentKeypadThrows[index]; if (displayValue === 0) displayValue = "0"; else if (displayValue === 25) displayValue = "BULL"; box.textContent = displayValue; } else { box.textContent = '-'; } }); }
+        
+        numPlayersInput.addEventListener('input', updatePlayerNameInputs);
+        
+        startGameButton.addEventListener('click', () => {
+            const num = parseInt(numPlayersInput.value);
+            if (num < 1 || num > 8) { alert("Prosím zadejte platný počet hráčů (1-8)."); return; }
+            players = [];
+            for (let i = 0; i < num; i++) {
+                const nameInput = document.getElementById(`player-name-${i}`);
+                let playerName = (nameInput && nameInput.value.trim() !== "") ? nameInput.value.trim() : `Hráč ${i + 1}`;
+                players.push({ 
+                    name: playerName, 
+                    score: initialScore, 
+                    roundsPlayed: 0, 
+                    totalScoreForAverage: 0,
+                    seriesScore: 0,
+                    seriesRoundsPlayed: 0,
+                    seriesTotalScoreForAverage: 0,
+                    gamesWonInSeries: 0
+                });
+            }
+            currentPlayerIndex = 0; currentTargetIndex = 0;
+            previousGameStates = []; 
+            updateUndoButtonVisibility(); 
+            
+            bodyElement.classList.remove('setup-active', 'gameover-active');
+            bodyElement.classList.add('game-active');
+            
+            updateScoreboard(); displayTurn();
+        });
+        
+        submitTurnButton.addEventListener('click', () => {
+            const currentStateSnapshot = {
+                players: JSON.parse(JSON.stringify(players)), 
+                currentPlayerIndex: currentPlayerIndex,
+                currentTargetIndex: currentTargetIndex
+            };
+            previousGameStates.push(currentStateSnapshot);
+            if (previousGameStates.length > MAX_UNDO_STEPS) {
+                previousGameStates.shift(); 
+            }
+
+            const currentTarget = targets[currentTargetIndex]; 
+            let roundScore = 0; 
+            let totalHitsThisRound = 0;
+            const currentPlayer = players[currentPlayerIndex]; 
+
+            if (currentTarget.type === "segment_detailed") { for (const dartNum in dartMultipliers) { const multiplier = dartMultipliers[dartNum]; if (multiplier > 0) { roundScore += multiplier * currentTarget.value; totalHitsThisRound++; } } }
+            else if (currentTarget.type === "bull_detailed") { for (const dartNum in bullDartValues) { const value = bullDartValues[dartNum]; if (value > 0) { roundScore += value; totalHitsThisRound++; } } }
+            else if (currentTarget.type === "any_multiple") { currentKeypadThrows.forEach(throwValue => { if (throwValue > 0) { roundScore += throwValue * currentTarget.multiplier; totalHitsThisRound++; } }); }
+
+            if (totalHitsThisRound === 0 && currentPlayer.score > 0) { currentPlayer.score = Math.floor(currentPlayer.score / 2); } 
+            else if (totalHitsThisRound > 0) { currentPlayer.score += roundScore; }
+            
+            currentPlayer.totalScoreForAverage += roundScore; 
+            currentPlayer.roundsPlayed++; 
+
+            currentPlayerIndex++; 
+            if (currentPlayerIndex >= players.length) { currentPlayerIndex = 0; currentTargetIndex++; }
+            
+            updateScoreboard();
+            updateUndoButtonVisibility(); 
+            if (currentTargetIndex >= targets.length) { 
+                endGame(); 
+            } else { 
+                displayTurn(); 
+            }
+        });
+
+        nextGameInSeriesButton.addEventListener('click', () => {
+            let topScoreThisGame = -Infinity; 
+            players.forEach(p => {
+                if (p.score > topScoreThisGame) topScoreThisGame = p.score;
+            });
+
+            players.forEach(player => {
+                player.seriesScore += player.score;
+                player.seriesRoundsPlayed += player.roundsPlayed;
+                player.seriesTotalScoreForAverage += player.totalScoreForAverage;
+                if (player.score === topScoreThisGame && topScoreThisGame >= 0) { 
+                    player.gamesWonInSeries++;
+                }
+                player.score = initialScore;
+                player.roundsPlayed = 0;
+                player.totalScoreForAverage = 0;
+            });
+
+            currentPlayerIndex = 0; 
+            currentTargetIndex = 0;
+            previousGameStates = []; 
+            updateUndoButtonVisibility(); 
+
+            bodyElement.classList.remove('gameover-active', 'setup-active');
+            bodyElement.classList.add('game-active');
+            
+            updateScoreboard(); 
+            displayTurn();      
+        });
+
+
+        undoTurnButton.addEventListener('click', () => {
+            if (previousGameStates.length > 0) {
+                const stateToRestore = previousGameStates.pop(); 
+                players = JSON.parse(JSON.stringify(stateToRestore.players)); 
+                currentPlayerIndex = stateToRestore.currentPlayerIndex;
+                currentTargetIndex = stateToRestore.currentTargetIndex;
+                updateScoreboard();
+                displayTurn(); 
+                updateUndoButtonVisibility(); 
+            }
+        });
+
+        restartGameButton.addEventListener('click', () => { 
+            bodyElement.classList.remove('game-active', 'gameover-active'); 
+            bodyElement.classList.add('setup-active'); 
+            previousGameStates = []; 
+            updateUndoButtonVisibility(); 
+            updatePlayerNameInputs(); 
+        });
+
+        function updateUndoButtonVisibility() {
+            if (previousGameStates.length > 0) {
+                undoTurnButton.classList.remove('hidden');
+            } else {
+                undoTurnButton.classList.add('hidden');
+            }
+        }
+
+        function displayTurn() {
+            const currentTarget = targets[currentTargetIndex];
+            currentTargetDisplay.textContent = `${currentTarget.name}`;
+            updateUndoButtonVisibility(); 
+            
+            detailedSegmentInputsArea.classList.add('hidden');
+            anyMultipleInputsArea.classList.add('hidden'); 
+            anyMultipleKeypadArea.classList.add('hidden');
+            bullDetailedInputsArea.classList.add('hidden');
+            inputPrompt.classList.add('hidden-prompt'); 
+            
+            bodyElement.classList.remove('target-any-multiple'); 
+            keypadGrid.classList.remove('layout-triple', 'layout-double');
+            
+            allKeypadButtons.forEach(btn => { 
+                btn.style.gridColumn = '';
+                btn.style.display = 'inline-block';
+            });
+            keypadBullButton.style.visibility = 'visible'; 
+
+            if (currentTarget.type === "segment_detailed") {
+                detailedSegmentInputsArea.classList.remove('hidden');
+                dartMultipliers = { 1: 0, 2: 0, 3: 0 };
+                detailedSegmentInputsArea.querySelectorAll('.multiplier-buttons button').forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.dataset.multiplier) === 0) { btn.classList.add('active'); } });
+            } else if (currentTarget.type === "bull_detailed") {
+                bullDetailedInputsArea.classList.remove('hidden');
+                bullDartValues = { 1: 0, 2: 0, 3: 0 };
+                bullDetailedInputsArea.querySelectorAll('.bull-choice-buttons button').forEach(btn => { btn.classList.remove('active'); if (parseInt(btn.dataset.value) === 0) { btn.classList.add('active'); } });
+            } else if (currentTarget.type === "any_multiple") {
+                bodyElement.classList.add('target-any-multiple'); 
+                anyMultipleKeypadArea.classList.remove('hidden'); 
+                currentKeypadThrows = [];
+                updateKeypadDisplay();
+                if (currentTarget.name.toUpperCase() === "TRIPLE") {
+                    keypadGrid.classList.add('layout-triple'); 
+                    clearLastThrowButton.style.gridColumn = '1 / span 2'; 
+                    keypadZeroButton.style.gridColumn = '3 / span 2';   
+                    keypadBullButton.style.display = 'none'; 
+                } else if (currentTarget.name.toUpperCase() === "DOUBLE") {
+                    keypadGrid.classList.add('layout-double');  
+                    clearLastThrowButton.style.gridColumn = '1 / 2';  
+                    keypadZeroButton.style.gridColumn = '2 / span 2';    
+                    keypadBullButton.style.gridColumn = '4 / 5';      
+                    keypadBullButton.style.display = 'inline-block'; 
+                }
+                if(currentTarget.prompt) { // Tato podmínka nyní nebude pro TRIPLE/DOUBLE splněna
+                    inputPrompt.textContent = currentTarget.prompt; 
+                    inputPrompt.classList.remove('hidden-prompt'); 
+                }
+            }
+             window.scrollTo(0, 0);
+        }
+        
+        function updatePlayerNameInputs() { const num = parseInt(numPlayersInput.value) || 0; playerNamesArea.innerHTML = ''; for (let i = 0; i < num; i++) { const label = document.createElement('label'); label.setAttribute('for', `player-name-${i}`); label.textContent = `Jméno hráče ${i + 1}:`; const input = document.createElement('input'); input.type = 'text'; input.id = `player-name-${i}`; input.value = `Hráč ${i + 1}`; playerNamesArea.appendChild(label); playerNamesArea.appendChild(input); } }
+        
+        function updateScoreboard() {
+            playerScoresDisplay.innerHTML = '';
+            players.forEach((player, index) => {
+                const scoreBox = document.createElement('div'); scoreBox.classList.add('player-score-box');
+                if (index === currentPlayerIndex && currentTargetIndex < targets.length && bodyElement.classList.contains('game-active')) { 
+                    scoreBox.classList.add('active-player');
+                }
+                const nameDiv = document.createElement('div'); nameDiv.classList.add('player-name'); nameDiv.textContent = player.name;
+                const scoreValueDiv = document.createElement('div'); scoreValueDiv.classList.add('player-score-value'); scoreValueDiv.textContent = player.score; 
+                const averageDiv = document.createElement('div'); averageDiv.classList.add('player-average');
+                let averageScoreText = "Ø 0.00";
+                if (player.roundsPlayed > 0) { 
+                    averageScoreText = `Ø ${(player.totalScoreForAverage / player.roundsPlayed).toFixed(2)}`;
+                }
+                averageDiv.textContent = averageScoreText;
+                scoreBox.appendChild(nameDiv); scoreBox.appendChild(scoreValueDiv); scoreBox.appendChild(averageDiv); 
+                playerScoresDisplay.appendChild(scoreBox);
+            });
+        }
+
+        function endGame() {
+            bodyElement.classList.remove('setup-active', 'game-active');
+            bodyElement.classList.add('gameover-active');
+            previousGameStates = [];
+            updateUndoButtonVisibility();
+
+            const sortedPlayersByGameScore = [...players].sort((a, b) => b.score - a.score);
+            
+            let gameWinnerText = "Informace o vítězi nejsou dostupné.";
+            if (sortedPlayersByGameScore.length > 0) {
+                 gameWinnerText = `Vítěz hry je ${sortedPlayersByGameScore[0].name} s ${sortedPlayersByGameScore[0].score} body!`;
+                let topGameScore = sortedPlayersByGameScore[0].score;
+                
+                if (sortedPlayersByGameScore.length > 1 && topGameScore === sortedPlayersByGameScore[1].score && topGameScore >=0 ) { 
+                    const gameWinners = sortedPlayersByGameScore.filter(p => p.score === topGameScore);
+                    if (gameWinners.length > 1) {
+                        gameWinnerText = `Remíza ve hře: ${gameWinners.map(w => w.name).join(', ')} (${topGameScore} b.)`;
+                    }
+                } else if (topGameScore < 0) { 
+                    gameWinnerText = "V této hře nikdo nezískal kladné skóre.";
+                }
+            } else if (players.length === 0) {
+                 gameWinnerText = "Nebyly nalezeny žádné údaje o hráčích.";
+            }
+
+            gameOverMessage.textContent = gameWinnerText;
+            finalScoresTableBody.innerHTML = '';
+            
+            const playersForDisplay = players.map(p => ({...p})); 
+            playersForDisplay.sort((a,b) => (b.seriesScore + b.score) - (a.seriesScore + a.score));
+
+            playersForDisplay.forEach(player => {
+                const row = finalScoresTableBody.insertRow();
+                row.insertCell().textContent = player.name;
+                row.insertCell().textContent = player.score; 
+                
+                let gameAvg = "0.00";
+                if (player.roundsPlayed > 0) {
+                    gameAvg = (player.totalScoreForAverage / player.roundsPlayed).toFixed(2);
+                }
+                row.insertCell().textContent = gameAvg; 
+                row.insertCell().textContent = player.gamesWonInSeries; 
+                row.insertCell().textContent = player.seriesScore + player.score; 
+                
+                let seriesAvgTotal = "0.00";
+                const totalSeriesRoundsToShow = player.seriesRoundsPlayed + player.roundsPlayed;
+                const totalSeriesScoreForAvgToShow = player.seriesTotalScoreForAverage + player.totalScoreForAverage;
+
+                if (totalSeriesRoundsToShow > 0) {
+                    seriesAvgTotal = (totalSeriesScoreForAvgToShow / totalSeriesRoundsToShow).toFixed(2);
+                }
+                row.insertCell().textContent = seriesAvgTotal; 
+            });
+            window.scrollTo(0, 0);
+        }
+
+        updatePlayerNameInputs();
+        numPlayersInput.focus();
+    </script>
+</body>
+</html>
